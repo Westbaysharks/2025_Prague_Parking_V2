@@ -34,15 +34,21 @@ namespace PragueParking.Data
                         new VehicleTypeConfig { Type = "Car", Size = 4, PricePerHour = 20 },
                         new VehicleTypeConfig { Type = "Bus", Size = 16, PricePerHour = 80 }
                     };
+                    // Använd standardvärden från Settings-klassen om de finns
+                    // defaultSettings.TotalSpots = new Settings().TotalSpots; // Redan 100 som standard
+                    // defaultSettings.SpotSize = new Settings().SpotSize;     // Redan 4 som standard
+                    // defaultSettings.FreeMinutes = new Settings().FreeMinutes; // Redan 10 som standard
                     SaveSettings(defaultSettings, path);
                     return defaultSettings;
                 }
 
                 string json = File.ReadAllText(path);
-                return JsonConvert.DeserializeObject<Settings>(json) ?? new Settings();
+                // Returnera ett nytt Settings-objekt om deserialiseringen misslyckas
+                return JsonConvert.DeserializeObject<Settings>(json, _jsonSettings) ?? new Settings();
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                Console.WriteLine($"Error loading settings: {ex.Message}. Returning default settings.");
                 // Returnera standardinställningar vid fel
                 return new Settings();
             }
@@ -51,12 +57,19 @@ namespace PragueParking.Data
         // Sparar inställningar till settings.json
         public void SaveSettings(Settings settings, string path)
         {
-            string json = JsonConvert.SerializeObject(settings, _jsonSettings);
-            File.WriteAllText(path, json);
+            try
+            {
+                string json = JsonConvert.SerializeObject(settings, _jsonSettings);
+                File.WriteAllText(path, json);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error saving settings: {ex.Message}");
+            }
         }
 
         // Laddar parkeringsdata (parkedvehicles.json)
-        public List<IParkingSpot> LoadData(string path, Settings settings)
+        public List<IParkingSpot> LoadData(string path, Settings settings) // settings behövs inte här längre
         {
             try
             {
@@ -72,10 +85,12 @@ namespace PragueParking.Data
                 var spots = JsonConvert.DeserializeObject<List<ParkingSpot>>(json, _jsonSettings);
 
                 // Konvertera List<ParkingSpot> till List<IParkingSpot> för retur
+                // Returnera tom lista om deserialiseringen misslyckas
                 return spots?.ToList<IParkingSpot>() ?? new List<IParkingSpot>();
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                Console.WriteLine($"Error loading parking data: {ex.Message}. Returning empty list.");
                 // Returnera tom lista vid fel
                 return new List<IParkingSpot>();
             }

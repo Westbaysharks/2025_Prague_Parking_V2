@@ -1,0 +1,27 @@
+{
+  "TotalSpots": 100,
+  "SpotSize": 4,
+  "FreeMinutes": 10,
+  "VehicleTypes": [
+    {
+      "Type": "Bike",
+      "Size": 1,
+      "PricePerHour": 5
+    },
+    {
+      "Type": "MC",
+      "Size": 2,
+      "PricePerHour": 10
+    },
+    {
+      "Type": "Car",
+      "Size": 4,
+      "PricePerHour": 20
+    },
+    {
+      "Type": "Bus",
+      "Size": 16,
+      "PricePerHour": 80
+    }
+  ]
+}

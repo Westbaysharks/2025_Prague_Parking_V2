@@ -1,49 +1,98 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;  
-
+﻿using Newtonsoft.Json;
 using PragueParking.Core;
-using PragueParking.Data;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System;
 
-namespace PragueParking.ConsoleApp
+// 1. Rätt namnrymd
+namespace PragueParking.Data
 {
-    class Program
+    // 2. Rätt klassnamn
+    public class DataAccess
     {
-        static void Main(string[] args)
+        // Inställningar för JSON-hantering så att den kan spara/läsa interfaces (IVehicle, IParkingSpot)
+        private static readonly JsonSerializerSettings _jsonSettings = new JsonSerializerSettings
         {
-            // Sätt filvägar. AppContext.BaseDirectory är där .exe-filen körs.
-            string settingsPath = Path.Combine(AppContext.BaseDirectory, "settings.json");
-            string dataPath = Path.Combine(AppContext.BaseDirectory, "parkedvehicles.json");
+            TypeNameHandling = TypeNameHandling.Auto, // Viktig för att hantera IVehicle/IParkingSpot
+            Formatting = Formatting.Indented
+        };
 
+        // Laddar inställningar från settings.json
+        public Settings LoadSettings(string path)
+        {
             try
             {
-                // 1. Skapa data-access lagret
-                var dataAccess = new DataAccess();
+                if (!File.Exists(path))
+                {
+                    // Skapa en standard-fil om den inte finns
+                    var defaultSettings = new Settings();
+                    defaultSettings.VehicleTypes = new List<VehicleTypeConfig>
+                    {
+                        new VehicleTypeConfig { Type = "Bike", Size = 1, PricePerHour = 5 },
+                        new VehicleTypeConfig { Type = "MC", Size = 2, PricePerHour = 10 },
+                        new VehicleTypeConfig { Type = "Car", Size = 4, PricePerHour = 20 },
+                        new VehicleTypeConfig { Type = "Bus", Size = 16, PricePerHour = 80 }
+                    };
+                    SaveSettings(defaultSettings, path);
+                    return defaultSettings;
+                }
 
-                // 2. Läs in inställningar (skapar fil om den saknas)
-                var settings = dataAccess.LoadSettings(settingsPath);
+                string json = File.ReadAllText(path);
+                return JsonConvert.DeserializeObject<Settings>(json) ?? new Settings();
+            }
+            catch (Exception)
+            {
+                // Returnera standardinställningar vid fel
+                return new Settings();
+            }
+        }
 
-                // 3. Läs in parkeringsdata (skapar test-data om fil saknas)
-                var spots = dataAccess.LoadData(dataPath, settings);
+        // Sparar inställningar till settings.json
+        public void SaveSettings(Settings settings, string path)
+        {
+            string json = JsonConvert.SerializeObject(settings, _jsonSettings);
+            File.WriteAllText(path, json);
+        }
 
-                // 4. Skapa garaget med inställningar och data
-                var garage = new ParkingGarage(settings, spots);
+        // Laddar parkeringsdata (parkedvehicles.json)
+        public List<IParkingSpot> LoadData(string path, Settings settings)
+        {
+            try
+            {
+                if (!File.Exists(path))
+                {
+                    // Returnera en tom lista om filen inte finns (garaget skapar nya platser)
+                    return new List<IParkingSpot>();
+                }
 
-                // 5. Skapa och starta menyn
-                var menu = new MenuHandler(garage, dataAccess, settingsPath, dataPath);
-                menu.ShowMainMenu();
+                string json = File.ReadAllText(path);
+
+                // Deserialisera till den konkreta typen ParkingSpot
+                var spots = JsonConvert.DeserializeObject<List<ParkingSpot>>(json, _jsonSettings);
+
+                // Konvertera List<ParkingSpot> till List<IParkingSpot> för retur
+                return spots?.ToList<IParkingSpot>() ?? new List<IParkingSpot>();
+            }
+            catch (Exception)
+            {
+                // Returnera tom lista vid fel
+                return new List<IParkingSpot>();
+            }
+        }
+
+        // Sparar parkeringsdata (parkedvehicles.json)
+        public void SaveData(List<IParkingSpot> spots, string path)
+        {
+            try
+            {
+                string json = JsonConvert.SerializeObject(spots, _jsonSettings);
+                File.WriteAllText(path, json);
             }
             catch (Exception ex)
             {
-                // Fånga eventuella oväntade fel
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("A critical error occurred and the application must close.");
-                Console.WriteLine(ex.Message);
-                Console.WriteLine("Press any key to exit.");
-                Console.ReadKey();
+                // Hantera eventuella skrivfel
+                Console.WriteLine($"Error saving data: {ex.Message}");
             }
         }
     }

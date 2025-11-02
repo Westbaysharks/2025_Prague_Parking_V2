@@ -69,14 +69,21 @@ namespace PragueParking.Data
         }
 
         // Laddar parkeringsdata (parkedvehicles.json)
-        public List<IParkingSpot> LoadData(string path, Settings settings) // settings behövs inte här längre
+        public List<IParkingSpot> LoadData(string path, Settings settings) // settings behövs nu
         {
             try
             {
                 if (!File.Exists(path))
                 {
-                    // Returnera en tom lista om filen inte finns (garaget skapar nya platser)
-                    return new List<IParkingSpot>();
+                    // Filen finns inte. Skapa testdata.
+                    Console.WriteLine("Data file not found. Creating test data...");
+                    List<IParkingSpot> testData = CreateTestData(settings);
+
+                    // Spara den nya testdatan till fil direkt
+                    SaveData(testData, path);
+
+                    // Returnera den nya listan
+                    return testData;
                 }
 
                 string json = File.ReadAllText(path);
@@ -109,6 +116,55 @@ namespace PragueParking.Data
                 // Hantera eventuella skrivfel
                 Console.WriteLine($"Error saving data: {ex.Message}");
             }
+        }
+        private List<IParkingSpot> CreateTestData(Settings settings)
+        {
+            var testSpots = new List<IParkingSpot>();
+
+            // Hämta fordonskonfigurationer
+            var carConfig = settings.VehicleTypes.FirstOrDefault(v => v.Type == "Car");
+            var mcConfig = settings.VehicleTypes.FirstOrDefault(v => v.Type == "MC");
+
+            // Hämta storlekar (samma logik som i ParkingGarage.cs)
+            int defaultSpotSize = carConfig?.Size ?? settings.SpotSize;
+            int busSpotSize = settings.VehicleTypes.FirstOrDefault(v => v.Type == "Bus")?.Size ?? (defaultSpotSize * 4);
+
+            // 1. Skapa alla P-platser (tomma)
+            for (int i = 0; i < settings.TotalSpots; i++)
+            {
+                int spotNumber = i + 1;
+                bool isBusCompatible = i < 50;
+                int spotSize = isBusCompatible ? busSpotSize : defaultSpotSize;
+                testSpots.Add(new ParkingSpot(spotNumber, spotSize, isBusCompatible));
+            }
+
+            // 2. Lägg till en test-bil på plats 1 (index 0)
+            if (carConfig != null)
+            {
+                // Skapa en 'Car' direkt (inte via factory) för att komma åt settern.
+                var car1 = new Car("ABC123", carConfig);
+
+                // Nu kan vi sätta ArrivalTime eftersom 'car1' är av typen 'Car',
+                // som ärver 'Vehicle'-klassens public setter.
+                car1.ArrivalTime = DateTime.Now.AddHours(-2).AddMinutes(-30); // 2.5 timmar sedan
+                testSpots[0].AddVehicle(car1);
+            }
+
+            // 3. Lägg till två test-MCs på plats 3 (index 2)
+            if (mcConfig != null)
+            {
+                // Skapa 'MC' direkt
+                var mc1 = new MC("MCD001", mcConfig);
+                mc1.ArrivalTime = DateTime.Now.AddHours(-1); // 1 timme sedan
+                testSpots[2].AddVehicle(mc1);
+
+                var mc2 = new MC("MCD002", mcConfig);
+                mc2.ArrivalTime = DateTime.Now.AddMinutes(-15); // 15 min sedan
+                testSpots[2].AddVehicle(mc2); // Båda MCs på plats 3
+            }
+
+            Console.WriteLine($"Created {settings.TotalSpots} spots with 3 test vehicles.");
+            return testSpots;
         }
     }
 }

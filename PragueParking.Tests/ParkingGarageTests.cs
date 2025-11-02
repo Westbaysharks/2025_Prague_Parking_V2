@@ -1,8 +1,9 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using PragueParking.Core;
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using System;
+using System.Runtime;
 
 namespace PragueParking.Tests
 {
@@ -10,7 +11,7 @@ namespace PragueParking.Tests
     public class ParkingGarageTests
     {
         // En hjälpmetod för att skapa standard-inställningar för testerna
-        private Settings GetTestSettings()
+        public Settings GetTestSettings()
         {
             return new Settings
             {
@@ -45,34 +46,67 @@ namespace PragueParking.Tests
         }
 
         [TestMethod]
-        public void Test2_CheckoutVehicle_CalculatesPriceCorrectly()
+        public void Test2_MoveVehicle_Successful()
         {
             // --- ARRANGE (Förbered) ---
             var settings = GetTestSettings();
-            // Sätt gratisminuter till 0 för att förenkla pris-testet
-            settings.FreeMinutes = 0;
             var garage = new ParkingGarage(settings, new List<IParkingSpot>());
-            var mcConfig = settings.VehicleTypes.First(v => v.Type == "MC");
+            var carConfig = settings.VehicleTypes.First(v => v.Type == "Car");
+            var car = VehicleFactory.CreateVehicle("CAR-001", carConfig);
 
-            // Skapa en MC manuellt för att kunna sätta ankomsttiden
-            var mc = new MC("TEST-MC1", mcConfig);
-
-            // Reflection är ett sätt att ändra privata värden,
-            // vilket är användbart i tester. Vi sätter ankomsttiden
-            // till 1 timme och 30 minuter sedan.
-            // Priset ska då vara för 2 "påbörjade" timmar.
-            var arrivalTimeProperty = typeof(Vehicle).GetProperty("ArrivalTime");
-            arrivalTimeProperty.SetValue(mc, DateTime.Now.AddMinutes(-90)); // 1.5 timmar sedan
-
-            garage.ParkVehicle(mc);
+            // Parkera bilen (hamnar på plats 1, index 0)
+            garage.ParkVehicle(car);
 
             // --- ACT (Agera) ---
-            string result = garage.CheckoutVehicle("TEST-MC1");
+            // Flytta från plats 1 till (den tomma) plats 2
+            string result = garage.MoveVehicle("CAR-001", 2);
 
             // --- ASSERT (Kontrollera) ---
-            // Pris: 10 CZK/timme. Påbörjade timmar: 2. Totalpris: 20.
-            bool correctPrice = result.Contains("Total cost: 20.00 CZK");
-            Assert.IsTrue(correctPrice);
+            Assert.IsTrue(result.Contains("Moved"), "Meddelandet ska vara 'Moved'.");
+
+            var oldSpot = garage.Spots[0]; // Plats 1 (index 0)
+            var newSpot = garage.Spots[1]; // Plats 2 (index 1)
+
+            // Kontrollera att plats 1 nu är tom
+            Assert.AreEqual(0, oldSpot.OccupiedSize, "Gamla platsen (1) ska nu vara tom.");
+
+            // Kontrollera att plats 2 har bilen
+            Assert.AreEqual(car.Size, newSpot.OccupiedSize, "Nya platsen (2) ska nu vara upptagen av bilen.");
+            Assert.AreEqual("CAR-001", newSpot.ParkedVehicles.First().RegNumber, "Rätt bil ska finnas på nya platsen.");
+        }
+
+        [TestMethod]
+        public void Test3_MoveVehicle_Fail_SpotIsFull()
+        {
+            // --- ARRANGE (Förbered) ---
+            var settings = GetTestSettings();
+            var garage = new ParkingGarage(settings, new List<IParkingSpot>());
+            var carConfig = settings.VehicleTypes.First(v => v.Type == "Car");
+
+            var car1 = VehicleFactory.CreateVehicle("CAR-001", carConfig);
+            var car2 = VehicleFactory.CreateVehicle("CAR-002", carConfig);
+
+            garage.ParkVehicle(car1); // Parkerar på plats 1
+            garage.ParkVehicle(car2); // Parkerar på plats 2
+
+            // --- ACT (Agera) ---
+            // Försök flytta CAR-001 till plats 2, som redan är upptagen av CAR-002
+            string result = garage.MoveVehicle("CAR-001", 2);
+
+            // --- ASSERT (Kontrollera) ---
+            Assert.IsTrue(result.StartsWith("Error"), "Resultatet ska vara ett felmeddelande.");
+            Assert.IsTrue(result.Contains("does not fit"), "Felet ska vara att bilen 'inte får plats'.");
+
+            var spot1 = garage.Spots[0]; // Plats 1 (index 0)
+            var spot2 = garage.Spots[1]; // Plats 2 (index 1)
+
+            // Kontrollera att CAR-001 är kvar på plats 1
+            Assert.AreEqual(1, spot1.ParkedVehicles.Count, "Plats 1 ska fortfarande ha ett fordon.");
+            Assert.AreEqual("CAR-001", spot1.ParkedVehicles.First().RegNumber, "CAR-001 ska vara kvar på plats 1.");
+
+            // Kontrollera att CAR-002 är kvar på plats 2
+            Assert.AreEqual(1, spot2.ParkedVehicles.Count, "Plats 2 ska fortfarande ha ett fordon.");
+            Assert.AreEqual("CAR-002", spot2.ParkedVehicles.First().RegNumber, "CAR-002 ska vara kvar på plats 2.");
         }
     }
 }

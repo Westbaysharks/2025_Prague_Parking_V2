@@ -29,5 +29,6 @@ namespace PragueParking.Core
                     return null; // Om fordonstypen inte känns igen
             }
         }
+
     }
 }

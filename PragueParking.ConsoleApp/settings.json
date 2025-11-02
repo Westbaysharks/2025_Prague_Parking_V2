@@ -1,4 +1,9 @@
 {
+  // Här är settings. Man kan t.ex. ändra antal parkeringsplatser och sedan ladda om settings.json filen
+  // man kan inte ändra om det t.ex. finns ett fordon parkerat på en plats som försvinner.
+  // Här ändrar man pris också vid behov. Efter man ändrat i settings filen, starta om programmet för att ladda in nya settings.
+  // Kan behövas Clean och Rebuild i Visual Studio för att få med ändringar i settings filen.
+
   "TotalSpots": 100,
   "SpotSize": 4,
   "FreeMinutes": 10,

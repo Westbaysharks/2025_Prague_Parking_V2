@@ -10,16 +10,16 @@ namespace PragueParking.Core
 {
     public class ParkingSpot : IParkingSpot
     {
-        public int SpotNumber { get; private set; }
-        public int TotalSize { get; private set; }
-        public bool IsBusCompatible { get; private set; }
+        public int SpotNumber { get; set; }
+        public int TotalSize { get; set; }
+        public bool IsBusCompatible { get; set; }
 
         // [JsonIgnore] talar om för JSON-serialiseraren att inte spara
         // denna egenskap, eftersom den kan räknas ut vid behov.
         [JsonIgnore]
         public int OccupiedSize => ParkedVehicles.Sum(v => v.Size);
 
-        public List<IVehicle> ParkedVehicles { get; private set; }
+        public List<IVehicle> ParkedVehicles { get; set; }
 
         // Konstruktor för att skapa en ny, tom P-plats.
         public ParkingSpot(int number, int size, bool isBusCompatible)

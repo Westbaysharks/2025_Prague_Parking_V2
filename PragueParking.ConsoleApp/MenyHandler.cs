@@ -66,6 +66,7 @@ namespace PragueParking.ConsoleApp
                         ReloadSettings();
                         break;
                     case "Exit":
+                        _dataAccess.SaveData(_garage.Spots, _dataPath);
                         keepRunning = false;
                         break;
                 }
@@ -227,7 +228,14 @@ namespace PragueParking.ConsoleApp
 
                     if (spot.IsBusCompatible) content += "\n[grey](Bus)[/]";
 
-                    rowItems[j] = new Panel(content).BorderColor(Color.Parse(color));
+                    Color borderColor = color switch
+                    {
+                        "green" => Color.Green,
+                        "yellow" => Color.Yellow,
+                        "red" => Color.Red,
+                        _ => Color.Grey
+                    };
+                    rowItems[j] = new Panel(content).BorderColor(borderColor);
                 }
                 table.AddRow(rowItems);
             }

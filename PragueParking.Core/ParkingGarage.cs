@@ -9,8 +9,8 @@ namespace PragueParking.Core
     // Huvudklassen som hanterar all logik för garaget.
     public class ParkingGarage
     {
-        public List<IParkingSpot> Spots { get; private set; }
-        public Settings Settings { get; private set; }
+        public List<IParkingSpot> Spots { get; set; }
+        public Settings Settings { get; set; }
 
         // Konstruktorn tar emot inställningar och en befintlig lista med platser
         // (t.ex. inläst från fil).
@@ -22,27 +22,88 @@ namespace PragueParking.Core
             InitializeSpots();
         }
 
+        // --- KORRIGERAD METOD ---
         // Skapar upp alla P-platser enligt inställningarna.
         private void InitializeSpots()
         {
-            // Om Spots redan har innehåll (från fil), gör inget.
+            // Hämta de avsedda storlekarna från inställningarna
+            // Använd 4 och 16 som standardvärden om de inte kan hittas
+            int defaultSpotSize = Settings.VehicleTypes.FirstOrDefault(v => v.Type == "Car")?.Size ?? Settings.SpotSize;
+            int busSpotSize = Settings.VehicleTypes.FirstOrDefault(v => v.Type == "Bus")?.Size ?? (defaultSpotSize * 4);
+
+            // Om Spots redan har innehåll (från fil), synka dem.
             if (Spots.Any())
             {
-                // Se bara till att storleken stämmer med nya settings
-                foreach (var spot in Spots)
+                for (int i = 0; i < Spots.Count; i++)
                 {
-                    
+                    var spot = Spots[i];
+                    if (spot.OccupiedSize == 0)
+                    {
+                        // SÄTT RÄTT STORLEK: 16 för buss-plats, 4 för övriga
+                        int newSize = spot.IsBusCompatible ? busSpotSize : defaultSpotSize;
+                        var newSpot = new ParkingSpot(spot.SpotNumber, newSize, spot.IsBusCompatible);
+                        Spots[i] = newSpot;
+                    }
                 }
+
+                // KONTROLLERA ÄVEN TOTALT ANTAL PLATSER
+                if (Settings.TotalSpots > Spots.Count)
+                {
+                    for (int i = Spots.Count; i < Settings.TotalSpots; i++)
+                    {
+                        int spotNumber = i + 1;
+                        bool isBusCompatible = i < 50;
+                        // SÄTT RÄTT STORLEK: 16 för buss-plats, 4 för övriga
+                        int spotSize = isBusCompatible ? busSpotSize : defaultSpotSize;
+                        Spots.Add(new ParkingSpot(spotNumber, spotSize, isBusCompatible));
+                    }
+                }
+                else if (Settings.TotalSpots < Spots.Count)
+                {
+                    // Validering: Kolla om några platser som ska tas bort är upptagna
+                    bool canRemove = true;
+                    for (int i = Settings.TotalSpots; i < Spots.Count; i++)
+                    {
+                        if (Spots[i].OccupiedSize > 0)
+                        {
+                            canRemove = false;
+                            break;
+                        }
+                    }
+
+                    if (canRemove)
+                    {
+                        // Ok, platserna var tomma. Ta bort dem.
+                        int numToRemove = Spots.Count - Settings.TotalSpots;
+                        Spots.RemoveRange(Settings.TotalSpots, numToRemove);
+                    }
+                    else
+                    {
+                        // Kan inte ta bort. Skriv en varning till konsolen vid uppstart.
+                        // Vi litar på datafilen (t.ex. 100 platser) istället för settingsfilen (t.ex. 80 platser).
+
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.WriteLine("VARNING: settings.json anger färre platser än vad som finns i datafilen.");
+                        Console.WriteLine($"Platser {Settings.TotalSpots + 1}-{Spots.Count} är upptagna och kommer INTE att tas bort.");
+                        Console.ResetColor();
+
+                        // Synkronisera settings-objektet så att det matchar verkligheten (datafilen).
+                        // Detta gör att resten av programmet använder 100 platser.
+                        Settings.TotalSpots = Spots.Count;
+                    }
+                }
+
                 return;
             }
 
-            // Annars, skapa en ny lista med tomma platser.
+            // Annars, om filen var tom, skapa en helt ny lista.
             for (int i = 0; i < Settings.TotalSpots; i++)
             {
                 int spotNumber = i + 1;
-                //Endast de första 50 platserna (index 0-49) är för bussar
                 bool isBusCompatible = i < 50;
-                Spots.Add(new ParkingSpot(spotNumber, Settings.SpotSize, isBusCompatible));
+                // SÄTT RÄTT STORLEK: 16 för buss-plats, 4 för övriga
+                int spotSize = isBusCompatible ? busSpotSize : defaultSpotSize;
+                Spots.Add(new ParkingSpot(spotNumber, spotSize, isBusCompatible));
             }
         }
 
@@ -69,6 +130,7 @@ namespace PragueParking.Core
             // 3. Om fordonet är en buss, och den inte fick plats
             if (vehicle is Bus)
             {
+                // Detta meddelande visas nu korrekt om plats 1-50 är fulla.
                 return "Error: No compatible (first 50) and empty spot available for the bus.";
             }
 
@@ -173,6 +235,7 @@ namespace PragueParking.Core
             return Spots.FirstOrDefault(s => s.ParkedVehicles.Any(v => v.RegNumber == upperReg));
         }
 
+        // --- KORRIGERAD METOD ---
         // Ladda om inställningar
         public bool UpdateSettings(Settings newSettings)
         {
@@ -180,7 +243,6 @@ namespace PragueParking.Core
             if (newSettings.TotalSpots < this.Settings.TotalSpots)
             {
                 // Vi ska ta bort platser. Kolla om några av dem är upptagna.
-                // Ex: Går från 100 till 80. Vi måste kolla plats 81-100 (index 80-99).
                 for (int i = newSettings.TotalSpots; i < this.Settings.TotalSpots; i++)
                 {
                     if (Spots[i].OccupiedSize > 0)
@@ -192,27 +254,34 @@ namespace PragueParking.Core
                 // Ok, platserna som ska tas bort var tomma. Ta bort dem.
                 Spots.RemoveRange(newSettings.TotalSpots, this.Settings.TotalSpots - newSettings.TotalSpots);
             }
+
+            // Hämta de avsedda storlekarna från de NYA inställningarna
+            int defaultSpotSize = newSettings.VehicleTypes.FirstOrDefault(v => v.Type == "Car")?.Size ?? newSettings.SpotSize;
+            int busSpotSize = newSettings.VehicleTypes.FirstOrDefault(v => v.Type == "Bus")?.Size ?? (defaultSpotSize * 4);
+
             // Kolla om vi lägger till platser
-            else if (newSettings.TotalSpots > this.Settings.TotalSpots)
+            if (newSettings.TotalSpots > this.Settings.TotalSpots)
             {
                 for (int i = this.Settings.TotalSpots; i < newSettings.TotalSpots; i++)
                 {
                     int spotNumber = i + 1;
                     bool isBusCompatible = i < 50; // Samma regel gäller
-                    Spots.Add(new ParkingSpot(spotNumber, newSettings.SpotSize, isBusCompatible));
+                    // SÄTT RÄTT STORLEK: 16 för buss-plats, 4 för övriga
+                    int spotSize = isBusCompatible ? busSpotSize : defaultSpotSize;
+                    Spots.Add(new ParkingSpot(spotNumber, spotSize, isBusCompatible));
                 }
             }
 
             // Uppdatera storleken på alla befintliga, *tomma* platser.
-            // (Vi kan inte ändra storlek på en upptagen plats).
-            foreach (var spot in Spots)
+            for (int i = 0; i < Spots.Count; i++)
             {
+                var spot = Spots[i];
                 if (spot.OccupiedSize == 0)
                 {
-                    // Detta är en ful-lösning. Vi borde haft en 'SetSize'-metod
-                    // på ParkingSpot, men detta funkar för en nybörjare.
-                    var newSpot = new ParkingSpot(spot.SpotNumber, newSettings.SpotSize, spot.IsBusCompatible);
-                    Spots[spot.SpotNumber - 1] = newSpot;
+                    // SÄTT RÄTT STORLEK: 16 för buss-plats, 4 för övriga
+                    int newSize = spot.IsBusCompatible ? busSpotSize : defaultSpotSize;
+                    var newSpot = new ParkingSpot(spot.SpotNumber, newSize, spot.IsBusCompatible);
+                    Spots[i] = newSpot;
                 }
             }
 

@@ -62,17 +62,17 @@ namespace PragueParking.Tests
             string result = garage.MoveVehicle("CAR-001", 2);
 
             // --- ASSERT (Kontrollera) ---
-            Assert.IsTrue(result.Contains("Moved"), "Meddelandet ska vara 'Moved'.");
+            Assert.IsTrue(result.Contains("Moved"), "The message should be 'Moved'.");
 
             var oldSpot = garage.Spots[0]; // Plats 1 (index 0)
             var newSpot = garage.Spots[1]; // Plats 2 (index 1)
 
             // Kontrollera att plats 1 nu är tom
-            Assert.AreEqual(0, oldSpot.OccupiedSize, "Gamla platsen (1) ska nu vara tom.");
+            Assert.AreEqual(0, oldSpot.OccupiedSize, "The old location (1) should now be empty.");
 
             // Kontrollera att plats 2 har bilen
-            Assert.AreEqual(car.Size, newSpot.OccupiedSize, "Nya platsen (2) ska nu vara upptagen av bilen.");
-            Assert.AreEqual("CAR-001", newSpot.ParkedVehicles.First().RegNumber, "Rätt bil ska finnas på nya platsen.");
+            Assert.AreEqual(car.Size, newSpot.OccupiedSize, "The new location (2) should now be occupied by the car.");
+            Assert.AreEqual("CAR-001", newSpot.ParkedVehicles.First().RegNumber, "The right car must be at the new location.");
         }
 
         [TestMethod]
@@ -94,19 +94,19 @@ namespace PragueParking.Tests
             string result = garage.MoveVehicle("CAR-001", 2);
 
             // --- ASSERT (Kontrollera) ---
-            Assert.IsTrue(result.StartsWith("Error"), "Resultatet ska vara ett felmeddelande.");
-            Assert.IsTrue(result.Contains("does not fit"), "Felet ska vara att bilen 'inte får plats'.");
+            Assert.IsTrue(result.StartsWith("Error"), "The result should be an error message.");
+            Assert.IsTrue(result.Contains("does not fit"), "The fault is supposed to be that the car 'can't fit'.");
 
             var spot1 = garage.Spots[0]; // Plats 1 (index 0)
             var spot2 = garage.Spots[1]; // Plats 2 (index 1)
 
             // Kontrollera att CAR-001 är kvar på plats 1
-            Assert.AreEqual(1, spot1.ParkedVehicles.Count, "Plats 1 ska fortfarande ha ett fordon.");
-            Assert.AreEqual("CAR-001", spot1.ParkedVehicles.First().RegNumber, "CAR-001 ska vara kvar på plats 1.");
+            Assert.AreEqual(1, spot1.ParkedVehicles.Count, "Location 1 should still have a vehicle.");
+            Assert.AreEqual("CAR-001", spot1.ParkedVehicles.First().RegNumber, "CAR-001 should remain in position 1.");
 
             // Kontrollera att CAR-002 är kvar på plats 2
-            Assert.AreEqual(1, spot2.ParkedVehicles.Count, "Plats 2 ska fortfarande ha ett fordon.");
-            Assert.AreEqual("CAR-002", spot2.ParkedVehicles.First().RegNumber, "CAR-002 ska vara kvar på plats 2.");
+            Assert.AreEqual(1, spot2.ParkedVehicles.Count, "Location 2 should still have a vehicle.");
+            Assert.AreEqual("CAR-002", spot2.ParkedVehicles.First().RegNumber, "CAR-002 should remain in position 2.");
         }
     }
 }

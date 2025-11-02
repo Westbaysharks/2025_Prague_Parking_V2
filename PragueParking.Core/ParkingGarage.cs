@@ -22,9 +22,8 @@ namespace PragueParking.Core
             InitializeSpots();
         }
 
-        // --- KORRIGERAD METOD ---
         // Skapar upp alla P-platser enligt inställningarna.
-        private void InitializeSpots()
+        public void InitializeSpots()
         {
             // Hämta de avsedda storlekarna från inställningarna
             // Använd 4 och 16 som standardvärden om de inte kan hittas
@@ -83,8 +82,8 @@ namespace PragueParking.Core
                         // Vi litar på datafilen (t.ex. 100 platser) istället för settingsfilen (t.ex. 80 platser).
 
                         Console.ForegroundColor = ConsoleColor.Red;
-                        Console.WriteLine("VARNING: settings.json anger färre platser än vad som finns i datafilen.");
-                        Console.WriteLine($"Platser {Settings.TotalSpots + 1}-{Spots.Count} är upptagna och kommer INTE att tas bort.");
+                        Console.WriteLine("Error: settings.json specifies fewer locations than exist in the data file.");
+                        Console.WriteLine($"Spaces {Settings.TotalSpots + 1}-{Spots.Count} are busy and will NOT be removed.");
                         Console.ResetColor();
 
                         // Synkronisera settings-objektet så att det matchar verkligheten (datafilen).
@@ -229,13 +228,12 @@ namespace PragueParking.Core
         }
 
         // Hjälpmetod för att hitta P-platsen ett fordon står på.
-        private IParkingSpot? FindSpotByRegNumber(string regNumber)
+        public IParkingSpot? FindSpotByRegNumber(string regNumber)
         {
             string upperReg = regNumber.ToUpper();
             return Spots.FirstOrDefault(s => s.ParkedVehicles.Any(v => v.RegNumber == upperReg));
         }
 
-        // --- KORRIGERAD METOD ---
         // Ladda om inställningar
         public bool UpdateSettings(Settings newSettings)
         {

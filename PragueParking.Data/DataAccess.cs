@@ -5,14 +5,12 @@ using System.IO;
 using System.Linq;
 using System;
 
-// 1. Rätt namnrymd
 namespace PragueParking.Data
 {
-    // 2. Rätt klassnamn
     public class DataAccess
     {
         // Inställningar för JSON-hantering så att den kan spara/läsa interfaces (IVehicle, IParkingSpot)
-        private static readonly JsonSerializerSettings _jsonSettings = new JsonSerializerSettings
+        public static readonly JsonSerializerSettings _jsonSettings = new JsonSerializerSettings
         {
             TypeNameHandling = TypeNameHandling.Auto, // Viktig för att hantera IVehicle/IParkingSpot
             Formatting = Formatting.Indented
@@ -117,7 +115,7 @@ namespace PragueParking.Data
                 Console.WriteLine($"Error saving data: {ex.Message}");
             }
         }
-        private List<IParkingSpot> CreateTestData(Settings settings)
+        public List<IParkingSpot> CreateTestData(Settings settings)
         {
             var testSpots = new List<IParkingSpot>();
 
